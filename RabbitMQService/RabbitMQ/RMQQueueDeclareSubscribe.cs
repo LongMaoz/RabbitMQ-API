@@ -164,7 +164,7 @@ namespace RabbitMQService.RabbitMQ
                 };
 
                 _channel.ExchangeDeclare(exchange: exchangeName, type: "direct", durable: durable);
-                _channel.QueueDeclare(queue: queueName, false, false, false, arguments);
+                _channel.QueueDeclare(queue: queueName, durable: durable, false, false, arguments);
                 _channel.QueueBind(queue: queueName, exchange: exchangeName, routingKey: routingKey);
                 _channel.BasicQos(prefetchSize: 0, prefetchCount: prefetchCount, global: false);
 
@@ -182,7 +182,7 @@ namespace RabbitMQService.RabbitMQ
                     catch (Exception ex)
                     {
                         if (!autoAck)
-                            _channel.BasicNack(ea.DeliveryTag, true, true);
+                            _channel.BasicNack(ea.DeliveryTag, true, ea.Redelivered?false:true);//如果是重发数据第二次失败直接进死信
                     }
                 };
                 _channel.BasicConsume(queue: queueName, autoAck: autoAck, consumer: consumer);

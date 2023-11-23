@@ -114,16 +114,22 @@ namespace RabbitMQService.RabbitMQ
         /// <returns></returns>
         private bool GetConnection()
         {
-            lock (_obj)
+            if (_connection == null || !_connection.IsOpen)
             {
-                var _policy = Policy.Handle<SocketException>()
-                      .Or<BrokerUnreachableException>()
-                      .WaitAndRetry(10, x => TimeSpan.FromSeconds(Math.Pow(2, x)));
-
-                _policy.Execute(() =>
+                lock (_obj)
                 {
-                    _connection = _factory.CreateConnection();
-                });
+                    if (_connection == null || !_connection.IsOpen)
+                    {
+                        var _policy = Policy.Handle<SocketException>()
+                          .Or<BrokerUnreachableException>()
+                          .WaitAndRetry(10, x => TimeSpan.FromSeconds(Math.Pow(2, x)));
+
+                        _policy.Execute(() =>
+                        {
+                            _connection = _factory.CreateConnection();
+                        });
+                    }
+                }
             }
             if (_isConnection)
                 return true;

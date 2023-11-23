@@ -4,6 +4,7 @@ using Polly.Retry;
 using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -79,7 +80,7 @@ namespace RabbitMQService.RabbitMQ
                 var bt = Encoding.Default.GetBytes(str);
 
                 //创建公共direct模式死信队列
-                var dlxExchangeName = "deadDirect_exchangeName";
+                var dlxExchangeName = $"deadDirect_{exchangeName}";
                 _channel.ExchangeDeclare(exchange: dlxExchangeName, type: "direct", durable: durable);
                 _channel.QueueDeclare(queue: $"deadDirect_{queueName}", durable: durable, false, false, null);
                 _channel.QueueBind(queue: $"deadDirect_{queueName}", exchange: dlxExchangeName, routingKey: $"deadDirect_{RoutingKey}");
@@ -90,11 +91,14 @@ namespace RabbitMQService.RabbitMQ
                     { "x-dead-letter-exchange",dlxExchangeName },
                     { "x-dead-letter-routing-key", $"deadDirect_{RoutingKey}" }
                 };
-
+                //消息是否持久化？
+                IBasicProperties basic = _channel.CreateBasicProperties();
+                basic.DeliveryMode = (byte)(durable ? 2 : 1);
                 _channel.ExchangeDeclare(exchange: exchangeName, type: "direct", durable: durable);
                 _channel.QueueDeclare(queue: queueName, durable: durable, false, false, arguments);
                 _channel.QueueBind(queue: queueName, exchange: exchangeName, routingKey: RoutingKey);
-                _channel.BasicPublish(exchange: exchangeName, RoutingKey, null, bt);
+                _channel.BasicPublish(exchange: exchangeName, RoutingKey, basic, bt);
+                _channel.Close();
             }
         }
 
